@@ -13,3 +13,7 @@ Available Maven targets:
 * `mvn package` - build, run all tests, create JAR files in `target/` subdirectory (one without dependencies, one with full set of dependencies).
 You can run the latter with `java -jar target/shell-1.0-SNAPSHOT-jar-with-dependencies.jar`.
 * `mvn clean` - remove all generated files.
+
+# Building with IntelliJ IDEA
+
+Alternatively you should be able to seamlessly import Maven project into IDEA and run all classes/tests out of the box.
