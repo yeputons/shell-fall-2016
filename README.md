@@ -1,5 +1,8 @@
+[![Build Status](https://travis-ci.org/yeputons/shell-fall-2016.svg?branch=master)](https://travis-ci.org/yeputons/shell-fall-2016)
+
 # shell-fall-2016
 Educational project from Fall 2016, implementation of a shell.
+
 
 # Building with Maven
 
