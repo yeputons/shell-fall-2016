@@ -47,9 +47,11 @@ class TestTokenizeAndSubstitute {
     @Test fun testSubstitutions() {
         parser.environment["VAR"] = "Some value"
         parser.environment["OTHER_VAR1"] = "Other \$VAR"
-        assertEquals(listOf("Value", "of", "VAR", "is", "Some value"),
+        assertEquals(listOf("Value", "of", "VAR", "is", "Some",  "value"),
                 parser.tokenizeAndSubstitute("Value of VAR is \$VAR"))
-        assertEquals(listOf("Value", "of", "OTHER_VAR1", "is", "Other \$VAR"),
+        assertEquals(listOf("Value", "of", "VAR", "is", " Some value"),
+                parser.tokenizeAndSubstitute("Value of VAR is \" \$VAR\""))
+        assertEquals(listOf("Value", "of", "OTHER_VAR1", "is", "Other", "\$VAR"),
                 parser.tokenizeAndSubstitute("Value of OTHER_VAR1 is \$OTHER_VAR1"))
     }
 

@@ -1,83 +1,121 @@
 package net.yeputons.spbau.fall2016
 
 class LineParser(val environment: Environment) {
-    fun tokenizeAndSubstitute(line : String) : List<String> {
-        val tokens = mutableListOf<String>()
+    companion object {
+        fun isShellIdentifierPart(c: Char) = c.isLetterOrDigit() || c == '_'
 
-        var currentToken : String? = null
-        var insideQuotes : Char? = null
-        var pos = 0
-        while (pos < line.length) {
-            val errorPos = pos
-            val c = line[pos]
-            if (c == '\\') {
-                pos++
-                if (pos >= line.length) {
-                    throw ParserException("Unexpected eol after backslash", errorPos)
-                }
-                currentToken = currentToken ?: ""
-                currentToken += line[pos]
-                pos++
-            } else if (c == '$' && insideQuotes != '\'') {
-                var varName = ""
-                pos++
-                while (pos < line.length && isShellIdentifierPart(line[pos])) {
-                    varName += line[pos]
+        enum class Quotation(val char: Char?) {
+            QUOTED_DOUBLE('"'), QUOTED_SINGLE('\''), QUOTER(null);
+
+            companion object {
+                val quotationByChar = Quotation.values().associateBy(Quotation::char)
+            }
+        }
+
+        data class QuotedChar(val char: Char, val quotation: Quotation?, val position: Int);
+
+        fun processQuotes(str: String): List<QuotedChar> {
+            val result = mutableListOf<QuotedChar>()
+
+            var pos = 0
+            var quoted: Quotation? = null
+            while (pos < str.length) {
+                val c = str[pos]
+                if (c == '\\' && quoted != Quotation.QUOTED_SINGLE) {
+                    result.add(QuotedChar(c, Quotation.QUOTER, pos))
                     pos++
-                }
-                if (varName.isEmpty()) {
-                    throw ParserException("Empty variable name", errorPos)
-                }
-
-                val varValue: String = environment[varName] ?: throw ParserException("Non-existent variable " + varName, errorPos)
-                currentToken = currentToken ?: ""
-                currentToken += varValue
-            } else if (insideQuotes != null) {
-                if (c == insideQuotes) {
-                    insideQuotes = null
+                    val realChar = str.getOrNull(pos) ?: throw ParserException("Unexpected eol after backslash", pos)
+                    result.add(QuotedChar(realChar, Quotation.QUOTED_SINGLE, pos))
                     pos++
                     continue
+                }
+
+                val quotation = Quotation.quotationByChar[c]
+                if (quotation != null) {
+                    when (quoted) {
+                        null -> {
+                            result.add(QuotedChar(c, Quotation.QUOTER, pos))
+                            quoted = quotation
+                        }
+                        quotation -> {
+                            quoted = null
+                            result.add(QuotedChar(c, Quotation.QUOTER, pos))
+                        }
+                        else -> result.add(QuotedChar(c, quoted, pos))
+                    }
+                    pos++
                 } else {
-                    currentToken = currentToken ?: ""
-                    currentToken += line[pos]
+                    result.add(QuotedChar(c, quoted, pos))
                     pos++
                 }
-            } else if (c == '"' || c == '\'') {
-                insideQuotes = c
-                currentToken = currentToken ?: ""
-                pos++
-            } else if (c.isWhitespace()) {
-                if (currentToken != null) {
-                    tokens.add(currentToken)
-                    currentToken = null
+            }
+            if (quoted != null) {
+                throw ParserException("Unclosed quote detected", pos)
+            }
+            return result
+        }
+
+        fun tokenize(s: List<QuotedChar>): List<String> {
+            val result = mutableListOf<String>()
+
+            fun isSeparator(c: QuotedChar): Boolean = c.quotation == null && c.char.isWhitespace()
+
+            fun isSpecialChar(c: QuotedChar): Boolean = c.quotation == null && c.char == '|'
+
+            fun splitBetween(a: QuotedChar, b: QuotedChar): Boolean =
+                    isSeparator(a) || isSpecialChar(a) ||
+                            isSeparator(b) || isSpecialChar(b)
+
+            var currentToken: StringBuilder? = null
+            var previous: QuotedChar? = null
+            for (c in s) {
+                if (previous != null && splitBetween(previous, c)) {
+                    if (currentToken != null) {
+                        result.add(currentToken.toString())
+                        currentToken = null
+                    }
                 }
-                pos++
-            } else if (c == '|') {
-                if (currentToken != null) {
-                    tokens.add(currentToken)
-                    currentToken = null
+
+                if (!isSeparator(c)) {
+                    currentToken = currentToken ?: StringBuilder();
+                    if (c.quotation != Quotation.QUOTER) {
+                        currentToken.append(c.char)
+                    }
                 }
-                tokens.add("" + c)
+                previous = c
+            }
+            if (currentToken != null) {
+                result.add(currentToken.toString())
+            }
+            return result
+        }
+    }
+
+    fun substitute(str: List<QuotedChar>): String {
+        val result = StringBuilder()
+        var pos = 0
+        while (pos < str.size) {
+            val startPos = pos
+            if (str[pos].char == '$' && str[pos].quotation != Quotation.QUOTED_SINGLE) {
+                val varNameBuilder = StringBuilder()
                 pos++
+                while (pos < str.size && isShellIdentifierPart(str[pos].char)) {
+                    varNameBuilder.append(str[pos].char)
+                    pos++
+                }
+                val varName = varNameBuilder.toString()
+                val varValue: String = environment[varName] ?: throw ParserException("Non-existent variable '$varName'", startPos)
+                result.append(varValue)
             } else {
-                currentToken = currentToken ?: ""
-                currentToken += line[pos]
+                result.append(str[pos].char)
                 pos++
             }
         }
-        if (insideQuotes != null) {
-            throw ParserException("Quote $insideQuotes is not closed", pos)
-        }
-        if (currentToken != null) {
-            tokens += currentToken
-        }
-        return tokens
+        return result.toString()
     }
 
-    companion object {
-        fun isShellIdentifierPart(c : Char): Boolean = c.isLetterOrDigit() || c == '_'
-    }
+    fun tokenizeAndSubstitute(line: String): List<String> = tokenize(processQuotes(substitute(processQuotes(line))))
 }
 
-class ParserException(message : String, pos : Int) : Exception(message + " at position " + pos) {
+class ParserException(message: String, pos: Int) : Exception(message + " at position " + pos) {
 }
