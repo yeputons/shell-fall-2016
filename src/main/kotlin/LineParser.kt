@@ -1,5 +1,11 @@
 package net.yeputons.spbau.fall2016
 
+/**
+ * This class represents an annotated char. Each character in a string can be
+ * either unquoted, quoted by some quotation mark or be a quotation mark itself
+ * (meaning that it should no go past tokenizer). Quotation status impacts
+ * further tokenization and variable substitution.
+ */
 data class AnnotatedChar(val char: Char, val quotation: Quotation) {
     enum class Quotation(val char: Char?) {
         UNQUOTED(null),
@@ -17,6 +23,9 @@ class LineParser(val environment: Environment) {
     companion object {
         fun isShellIdentifierPart(c: Char) = c.isLetterOrDigit() || c == '_'
 
+        /**
+         * Processes quotes and \ and returns the same string annotated.
+         */
         fun processQuotes(str: String): List<AnnotatedChar> {
             val result = mutableListOf<AnnotatedChar>()
 
@@ -58,6 +67,11 @@ class LineParser(val environment: Environment) {
             return result
         }
 
+        /**
+         * Separates annotated string into tokens.
+         * Tokens are separated by non-quoted whitespaces.
+         * Special characters ('|' only so far) are extracted in their own token.
+         */
         fun tokenize(s: List<AnnotatedChar>): List<String> {
             val result = mutableListOf<String>()
 
@@ -94,6 +108,10 @@ class LineParser(val environment: Environment) {
         }
     }
 
+    /**
+     * Looks for non-quoted sequences in the form of $ABC and replaces
+     * them with corresponding env variable values.
+     */
     fun substitute(str: List<AnnotatedChar>): String {
         val result = StringBuilder()
         var pos = 0
@@ -117,6 +135,9 @@ class LineParser(val environment: Environment) {
         return result.toString()
     }
 
+    /**
+     * Parses shell line into sequence of words, performs one round of substitutions.
+     */
     fun parse(line: String): List<String> = tokenize(processQuotes(substitute(processQuotes(line))))
 }
 
