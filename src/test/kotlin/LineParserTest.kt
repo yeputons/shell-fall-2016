@@ -16,15 +16,14 @@ fun getCharQuotations(str: List<AnnotatedChar>): String {
 }
 
 fun toQuotedCharList(str: String, quotations: String): List<AnnotatedChar> {
-    return str.zip(quotations).mapIndexed { pos, data ->
-        AnnotatedChar(data.first, quotationByShortcut[data.second] as AnnotatedChar.Quotation, pos)
+    return str.zip(quotations).map { data ->
+        AnnotatedChar(data.first, quotationByShortcut[data.second] as AnnotatedChar.Quotation)
     }
 }
 
 class TestProcessQuotes {
     fun checkQuotes(str: String, quoted: String) {
         val result = LineParser.processQuotes(str)
-        assertEquals((0..str.length - 1).toList(), result.map(AnnotatedChar::position))
         assertEquals(str.toList(), result.map(AnnotatedChar::char))
         assertEquals(quoted, getCharQuotations(result))
     }

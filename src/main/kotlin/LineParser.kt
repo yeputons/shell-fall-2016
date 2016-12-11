@@ -1,6 +1,6 @@
 package net.yeputons.spbau.fall2016
 
-data class AnnotatedChar(val char: Char, val quotation: Quotation, val position: Int) {
+data class AnnotatedChar(val char: Char, val quotation: Quotation) {
     enum class Quotation(val char: Char?) {
         UNQUOTED(null),
         QUOTER(null),
@@ -25,10 +25,10 @@ class LineParser(val environment: Environment) {
             while (pos < str.length) {
                 val c = str[pos]
                 if (c == '\\' && quoted != AnnotatedChar.Quotation.QUOTED_SINGLE) {
-                    result.add(AnnotatedChar(c, AnnotatedChar.Quotation.QUOTER, pos))
+                    result.add(AnnotatedChar(c, AnnotatedChar.Quotation.QUOTER))
                     pos++
                     val realChar = str.getOrNull(pos) ?: throw ParserException("Unexpected eol after backslash", pos)
-                    result.add(AnnotatedChar(realChar, AnnotatedChar.Quotation.QUOTED_SINGLE, pos))
+                    result.add(AnnotatedChar(realChar, AnnotatedChar.Quotation.QUOTED_SINGLE))
                     pos++
                     continue
                 }
@@ -37,18 +37,18 @@ class LineParser(val environment: Environment) {
                 if (quotation != null) {
                     when (quoted) {
                         AnnotatedChar.Quotation.UNQUOTED -> {
-                            result.add(AnnotatedChar(c, AnnotatedChar.Quotation.QUOTER, pos))
+                            result.add(AnnotatedChar(c, AnnotatedChar.Quotation.QUOTER))
                             quoted = quotation
                         }
                         quotation -> {
                             quoted = AnnotatedChar.Quotation.UNQUOTED
-                            result.add(AnnotatedChar(c, AnnotatedChar.Quotation.QUOTER, pos))
+                            result.add(AnnotatedChar(c, AnnotatedChar.Quotation.QUOTER))
                         }
-                        else -> result.add(AnnotatedChar(c, quoted, pos))
+                        else -> result.add(AnnotatedChar(c, quoted))
                     }
                     pos++
                 } else {
-                    result.add(AnnotatedChar(c, quoted, pos))
+                    result.add(AnnotatedChar(c, quoted))
                     pos++
                 }
             }
