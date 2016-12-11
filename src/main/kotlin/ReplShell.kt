@@ -14,7 +14,7 @@ class ReplShell {
             val line = readLine() ?: break
             val tokens: List<String> =
                 try {
-                    parser.tokenizeAndSubstitute(line)
+                    parser.parse(line)
                 } catch (e : ParserException) {
                     println("Unable to parse command line:" + e.message)
                     continue
