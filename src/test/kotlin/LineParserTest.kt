@@ -2,7 +2,6 @@ package net.yeputons.spbau.fall2016
 
 import org.junit.Test
 import org.junit.Assert.*
-import javax.swing.text.html.parser.Parser
 
 val quotationShortcuts = mapOf(
         AnnotatedChar.Quotation.UNQUOTED to ' ',

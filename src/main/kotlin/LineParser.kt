@@ -110,7 +110,10 @@ class LineParser(val environment: Environment) {
 
     /**
      * Looks for non-quoted sequences in the form of $ABC and replaces
-     * them with corresponding env variable values.
+     * them with corresponding env variable values. Assumes that if the
+     * first $ is unquoted (or quoted by " only), then the following
+     * characters can compose variable's name (it's the case if you
+     * get the argument as <code>processQuotes</code>' result).
      */
     fun substitute(str: List<AnnotatedChar>): String {
         val result = StringBuilder()
