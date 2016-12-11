@@ -1,6 +1,6 @@
 package net.yeputons.spbau.fall2016
 
-data class QuotedChar(val char: Char, val quotation: Quotation, val position: Int) {
+data class AnnotatedChar(val char: Char, val quotation: Quotation, val position: Int) {
     enum class Quotation(val char: Char?) {
         UNQUOTED(null),
         QUOTER(null),
@@ -17,60 +17,60 @@ class LineParser(val environment: Environment) {
     companion object {
         fun isShellIdentifierPart(c: Char) = c.isLetterOrDigit() || c == '_'
 
-        fun processQuotes(str: String): List<QuotedChar> {
-            val result = mutableListOf<QuotedChar>()
+        fun processQuotes(str: String): List<AnnotatedChar> {
+            val result = mutableListOf<AnnotatedChar>()
 
             var pos = 0
-            var quoted = QuotedChar.Quotation.UNQUOTED
+            var quoted = AnnotatedChar.Quotation.UNQUOTED
             while (pos < str.length) {
                 val c = str[pos]
-                if (c == '\\' && quoted != QuotedChar.Quotation.QUOTED_SINGLE) {
-                    result.add(QuotedChar(c, QuotedChar.Quotation.QUOTER, pos))
+                if (c == '\\' && quoted != AnnotatedChar.Quotation.QUOTED_SINGLE) {
+                    result.add(AnnotatedChar(c, AnnotatedChar.Quotation.QUOTER, pos))
                     pos++
                     val realChar = str.getOrNull(pos) ?: throw ParserException("Unexpected eol after backslash", pos)
-                    result.add(QuotedChar(realChar, QuotedChar.Quotation.QUOTED_SINGLE, pos))
+                    result.add(AnnotatedChar(realChar, AnnotatedChar.Quotation.QUOTED_SINGLE, pos))
                     pos++
                     continue
                 }
 
-                val quotation = QuotedChar.Quotation.quotationByChar[c]
+                val quotation = AnnotatedChar.Quotation.quotationByChar[c]
                 if (quotation != null) {
                     when (quoted) {
-                        QuotedChar.Quotation.UNQUOTED -> {
-                            result.add(QuotedChar(c, QuotedChar.Quotation.QUOTER, pos))
+                        AnnotatedChar.Quotation.UNQUOTED -> {
+                            result.add(AnnotatedChar(c, AnnotatedChar.Quotation.QUOTER, pos))
                             quoted = quotation
                         }
                         quotation -> {
-                            quoted = QuotedChar.Quotation.UNQUOTED
-                            result.add(QuotedChar(c, QuotedChar.Quotation.QUOTER, pos))
+                            quoted = AnnotatedChar.Quotation.UNQUOTED
+                            result.add(AnnotatedChar(c, AnnotatedChar.Quotation.QUOTER, pos))
                         }
-                        else -> result.add(QuotedChar(c, quoted, pos))
+                        else -> result.add(AnnotatedChar(c, quoted, pos))
                     }
                     pos++
                 } else {
-                    result.add(QuotedChar(c, quoted, pos))
+                    result.add(AnnotatedChar(c, quoted, pos))
                     pos++
                 }
             }
-            if (quoted != QuotedChar.Quotation.UNQUOTED) {
+            if (quoted != AnnotatedChar.Quotation.UNQUOTED) {
                 throw ParserException("Unclosed quote detected", pos)
             }
             return result
         }
 
-        fun tokenize(s: List<QuotedChar>): List<String> {
+        fun tokenize(s: List<AnnotatedChar>): List<String> {
             val result = mutableListOf<String>()
 
-            fun isSeparator(c: QuotedChar): Boolean = c.quotation == QuotedChar.Quotation.UNQUOTED && c.char.isWhitespace()
+            fun isSeparator(c: AnnotatedChar): Boolean = c.quotation == AnnotatedChar.Quotation.UNQUOTED && c.char.isWhitespace()
 
-            fun isSpecialChar(c: QuotedChar): Boolean = c.quotation == QuotedChar.Quotation.UNQUOTED && c.char == '|'
+            fun isSpecialChar(c: AnnotatedChar): Boolean = c.quotation == AnnotatedChar.Quotation.UNQUOTED && c.char == '|'
 
-            fun splitBetween(a: QuotedChar, b: QuotedChar): Boolean =
+            fun splitBetween(a: AnnotatedChar, b: AnnotatedChar): Boolean =
                     isSeparator(a) || isSpecialChar(a) ||
                             isSeparator(b) || isSpecialChar(b)
 
             var currentToken: StringBuilder? = null
-            var previous: QuotedChar? = null
+            var previous: AnnotatedChar? = null
             for (c in s) {
                 if (previous != null && splitBetween(previous, c)) {
                     if (currentToken != null) {
@@ -81,7 +81,7 @@ class LineParser(val environment: Environment) {
 
                 if (!isSeparator(c)) {
                     currentToken = currentToken ?: StringBuilder();
-                    if (c.quotation != QuotedChar.Quotation.QUOTER) {
+                    if (c.quotation != AnnotatedChar.Quotation.QUOTER) {
                         currentToken.append(c.char)
                     }
                 }
@@ -94,12 +94,12 @@ class LineParser(val environment: Environment) {
         }
     }
 
-    fun substitute(str: List<QuotedChar>): String {
+    fun substitute(str: List<AnnotatedChar>): String {
         val result = StringBuilder()
         var pos = 0
         while (pos < str.size) {
             val startPos = pos
-            if (str[pos].char == '$' && str[pos].quotation != QuotedChar.Quotation.QUOTED_SINGLE) {
+            if (str[pos].char == '$' && str[pos].quotation != AnnotatedChar.Quotation.QUOTED_SINGLE) {
                 val varNameBuilder = StringBuilder()
                 pos++
                 while (pos < str.size && isShellIdentifierPart(str[pos].char)) {

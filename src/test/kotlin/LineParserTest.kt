@@ -5,27 +5,27 @@ import org.junit.Assert.*
 import javax.swing.text.html.parser.Parser
 
 val quotationShortcuts = mapOf(
-        QuotedChar.Quotation.UNQUOTED to ' ',
-        QuotedChar.Quotation.QUOTED_DOUBLE to 'd',
-        QuotedChar.Quotation.QUOTED_SINGLE to 's',
-        QuotedChar.Quotation.QUOTER to '\''
+        AnnotatedChar.Quotation.UNQUOTED to ' ',
+        AnnotatedChar.Quotation.QUOTED_DOUBLE to 'd',
+        AnnotatedChar.Quotation.QUOTED_SINGLE to 's',
+        AnnotatedChar.Quotation.QUOTER to '\''
 )
-val quotationByShortcut = QuotedChar.Quotation.values().associateBy { quotationShortcuts[it] }
-fun getCharQuotations(str: List<QuotedChar>): String {
+val quotationByShortcut = AnnotatedChar.Quotation.values().associateBy { quotationShortcuts[it] }
+fun getCharQuotations(str: List<AnnotatedChar>): String {
     return str.map({ quotationShortcuts[it.quotation] }).joinToString("")
 }
 
-fun toQuotedCharList(str: String, quotations: String): List<QuotedChar> {
+fun toQuotedCharList(str: String, quotations: String): List<AnnotatedChar> {
     return str.zip(quotations).mapIndexed { pos, data ->
-        QuotedChar(data.first, quotationByShortcut[data.second] as QuotedChar.Quotation, pos)
+        AnnotatedChar(data.first, quotationByShortcut[data.second] as AnnotatedChar.Quotation, pos)
     }
 }
 
 class TestProcessQuotes {
     fun checkQuotes(str: String, quoted: String) {
         val result = LineParser.processQuotes(str)
-        assertEquals((0..str.length - 1).toList(), result.map(QuotedChar::position))
-        assertEquals(str.toList(), result.map(QuotedChar::char))
+        assertEquals((0..str.length - 1).toList(), result.map(AnnotatedChar::position))
+        assertEquals(str.toList(), result.map(AnnotatedChar::char))
         assertEquals(quoted, getCharQuotations(result))
     }
 
