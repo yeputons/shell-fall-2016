@@ -5,6 +5,13 @@ import net.yeputons.spbau.fall2016.executables.Executable
 import net.yeputons.spbau.fall2016.executables.ExternalProcess
 import net.yeputons.spbau.fall2016.executables.PipedExecutable
 
+/**
+ * Parses single command into an <code>Executable</code>. One may add builtin commands
+ * by calling <code>addCommand</code>. Processing is performed as follows:
+ * 1. If there is '=' sign inside the only token of the command, it's considered variable assignment.
+ * 2. If there is a builtin command, it's called.
+ * 3. Otherwise, command is interpreted as external process call.
+ */
 class CommandWithArgumentsParser(val environment: net.yeputons.spbau.fall2016.Environment) {
     val commands = mutableMapOf<String, (String, List<String>) -> Executable>()
 
@@ -39,6 +46,11 @@ class CommandWithArgumentsParser(val environment: net.yeputons.spbau.fall2016.En
     }
 }
 
+/**
+ * Splits command line into a pipeline and uses <code>commandWithArgumentParser</code> to construct
+ * individual command. Folds them into a single <code>Executable</code> with <code>PipedExecutable</code>
+ * afterwards.
+ */
 class ExecutableBuilder(val commandWithArgumentsParser: net.yeputons.spbau.fall2016.parsing.CommandWithArgumentsParser) {
     companion object {
         fun splitByPipes(originalTokens: List<net.yeputons.spbau.fall2016.parsing.Token>): List<List<String>> {
@@ -53,7 +65,7 @@ class ExecutableBuilder(val commandWithArgumentsParser: net.yeputons.spbau.fall2
                 while (!tokens.isEmpty()) {
                     val token = tokens[0]
                     tokens = tokens.drop(1)
-                    if (!token.startQuoted && token.data == "|") {
+                    if (!token.startIsQuoted && token.data == "|") {
                         isLastLine = false
                         break
                     } else {

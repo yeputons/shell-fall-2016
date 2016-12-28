@@ -21,7 +21,12 @@ data class AnnotatedChar(val char: Char, val quotation: Quotation) {
     }
 }
 
-data class Token(val data: String, val startQuoted: Boolean)
+/**
+ * Represents a parsed token: string plus flag whether beginning of the token was quoted
+ * or escaped. It will be important when we split line by pipeline symbols - we should
+ * ignore those which was escaped.
+ */
+data class Token(val data: String, val startIsQuoted: Boolean)
 
 class LineParser(val environment: Environment) {
     companion object {

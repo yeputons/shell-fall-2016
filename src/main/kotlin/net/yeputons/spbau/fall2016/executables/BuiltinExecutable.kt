@@ -6,6 +6,17 @@ import java.util.concurrent.Callable
 import java.util.concurrent.FutureTask
 import java.util.regex.Pattern
 
+/**
+ * Common class for implementing builtin executables of all kinds.
+ * Executable should inherit from that class and implement <code>run()</code>
+ * method which may read from protected input stream <code>input</code> and
+ * write to output via <code>outputWrite</code> method. One should not
+ * close streams manually - it will be done automatically after <code>run()</code>
+ * is executed, if necessary (e.g. it's not performed if either stdin or stdout
+ * are inherited from the current process).
+ *
+ * Error messages are passed to standard output by convention.
+ */
 abstract class BuiltinExecutable() : Executable, Callable<Int> {
     var futureTask: FutureTask<Int>? = null
 
@@ -75,14 +86,13 @@ class EnvvarAssignment(val name: String, val value: String, val env: Environment
 
 class PwdCommand(val args: List<String>, val env: Environment) : BuiltinExecutable() {
     override fun call(): Int {
-        val result = if (args.isNotEmpty()) {
+        if (args.isNotEmpty()) {
             outputWrite("No arguments expected for pwd\n")
-            1
+            return 1
         } else {
             outputWrite(env.currentDirectory.toString() + "\n")
-            0
+            return 0
         }
-        return result
     }
 }
 

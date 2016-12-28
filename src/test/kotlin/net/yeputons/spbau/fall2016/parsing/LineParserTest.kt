@@ -155,7 +155,7 @@ class TokenizeTest {
     }
 
     fun checkTokenizeNoQuotes(expected: List<String>, str: String, quotations: String) {
-        checkTokenize(expected.map({ data -> Token(data, startQuoted = false) }), str, quotations)
+        checkTokenize(expected.map({ data -> Token(data, startIsQuoted = false) }), str, quotations)
     }
 
     @Test fun testSimpleTokenize() {
@@ -266,11 +266,11 @@ class LineParserParseTest {
                         Token("hello", false),
                         Token("|", false),
                         Token("|", true),
-                        Token("|", true),
+                        Token("|||", true),
                         Token("|", false),
                         Token("world", false)
                 ),
-                parser.parse("""hello|\| \||world""")
+                parser.parse("""hello|\| \|\|\||world""")
         )
     }
 
