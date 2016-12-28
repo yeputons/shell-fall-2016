@@ -1,6 +1,5 @@
 package net.yeputons.spbau.fall2016.executables
 
-import jdk.internal.util.xml.impl.Input
 import net.yeputons.spbau.fall2016.Environment
 import java.io.ByteArrayInputStream
 import java.io.IOException
