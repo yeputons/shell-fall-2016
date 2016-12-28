@@ -1,4 +1,6 @@
-package net.yeputons.spbau.fall2016
+package net.yeputons.spbau.fall2016.parsing
+
+import net.yeputons.spbau.fall2016.Environment
 
 /**
  * This class represents an annotated char. Each character in a string can be
@@ -19,6 +21,8 @@ data class AnnotatedChar(val char: Char, val quotation: Quotation) {
     }
 }
 
+data class Token(val data: String, val startQuoted: Boolean)
+
 class LineParser(val environment: Environment) {
     companion object {
         fun isShellIdentifierPart(c: Char) = c.isLetterOrDigit() || c == '_'
@@ -36,7 +40,7 @@ class LineParser(val environment: Environment) {
                 if (c == '\\' && quoted != AnnotatedChar.Quotation.QUOTED_SINGLE) {
                     result.add(AnnotatedChar(c, AnnotatedChar.Quotation.QUOTER))
                     pos++
-                    val realChar = str.getOrNull(pos) ?: throw ParserException("Unexpected eol after backslash", pos)
+                    val realChar = str.getOrNull(pos) ?: throw LineParserException("Unexpected eol after backslash", pos)
                     result.add(AnnotatedChar(realChar, AnnotatedChar.Quotation.QUOTED_SINGLE))
                     pos++
                     continue
@@ -62,7 +66,7 @@ class LineParser(val environment: Environment) {
                 }
             }
             if (quoted != AnnotatedChar.Quotation.UNQUOTED) {
-                throw ParserException("Unclosed quote detected", pos)
+                throw LineParserException("Unclosed quote detected", pos)
             }
             return result
         }
@@ -72,8 +76,8 @@ class LineParser(val environment: Environment) {
          * Tokens are separated by non-quoted whitespaces.
          * Special characters ('|' only so far) are extracted in their own token.
          */
-        fun tokenize(s: List<AnnotatedChar>): List<String> {
-            val result = mutableListOf<String>()
+        fun tokenize(s: List<AnnotatedChar>): List<Token> {
+            val result = mutableListOf<Token>()
 
             fun isSeparator(c: AnnotatedChar): Boolean = c.quotation == AnnotatedChar.Quotation.UNQUOTED && c.char.isWhitespace()
 
@@ -83,26 +87,28 @@ class LineParser(val environment: Environment) {
                     isSeparator(a) || isSpecialChar(a) ||
                             isSeparator(b) || isSpecialChar(b)
 
-            var currentToken: StringBuilder? = null
+            var currentToken: Pair<StringBuilder, Boolean>? = null
             var previous: AnnotatedChar? = null
             for (c in s) {
                 if (previous != null && splitBetween(previous, c)) {
                     if (currentToken != null) {
-                        result.add(currentToken.toString())
+                        result.add(Token(currentToken.first.toString(), currentToken.second))
                         currentToken = null
                     }
                 }
 
                 if (!isSeparator(c)) {
-                    currentToken = currentToken ?: StringBuilder();
+                    if (currentToken == null) {
+                        currentToken = Pair(StringBuilder(), c.quotation != AnnotatedChar.Quotation.UNQUOTED)
+                    }
                     if (c.quotation != AnnotatedChar.Quotation.QUOTER) {
-                        currentToken.append(c.char)
+                        currentToken.first.append(c.char)
                     }
                 }
                 previous = c
             }
             if (currentToken != null) {
-                result.add(currentToken.toString())
+                result.add(Token(currentToken.first.toString(), currentToken.second))
             }
             return result
         }
@@ -128,7 +134,7 @@ class LineParser(val environment: Environment) {
                     pos++
                 }
                 val varName = varNameBuilder.toString()
-                val varValue: String = environment[varName] ?: throw ParserException("Non-existent variable '$varName'", startPos)
+                val varValue: String = environment[varName] ?: throw LineParserException("Non-existent variable '$varName'", startPos)
                 result.append(varValue)
             } else {
                 result.append(str[pos].char)
@@ -141,8 +147,7 @@ class LineParser(val environment: Environment) {
     /**
      * Parses shell line into sequence of words, performs one round of substitutions.
      */
-    fun parse(line: String): List<String> = tokenize(processQuotes(substitute(processQuotes(line))))
+    fun parse(line: String): List<Token> = tokenize(processQuotes(substitute(processQuotes(line))))
 }
 
-class ParserException(message: String, pos: Int) : Exception(message + " at position " + pos) {
-}
+class LineParserException(message: String, pos: Int) : Exception(message + " at position " + pos)

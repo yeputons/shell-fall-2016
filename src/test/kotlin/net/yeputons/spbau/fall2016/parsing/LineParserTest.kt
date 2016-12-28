@@ -1,5 +1,6 @@
-package net.yeputons.spbau.fall2016
+package net.yeputons.spbau.fall2016.parsing
 
+import net.yeputons.spbau.fall2016.Environment
 import org.junit.Test
 import org.junit.Assert.*
 
@@ -16,11 +17,11 @@ fun getCharQuotations(str: List<AnnotatedChar>): String {
 
 fun toQuotedCharList(str: String, quotations: String): List<AnnotatedChar> {
     return str.zip(quotations).map { data ->
-        AnnotatedChar(data.first, quotationByShortcut[data.second] as AnnotatedChar.Quotation)
+        AnnotatedChar(data.first, quotationByShortcut[data.second]!!)
     }
 }
 
-class TestProcessQuotes {
+class ProcessQuotesTest {
     fun checkQuotes(str: String, quoted: String) {
         val result = LineParser.processQuotes(str)
         assertEquals(str.toList(), result.map(AnnotatedChar::char))
@@ -72,16 +73,16 @@ class TestProcessQuotes {
                 """      'ddddddd''s        'd'        's'         """)
     }
 
-    @Test(expected = ParserException::class) fun testUnclosedSingleQuote() {
+    @Test(expected = LineParserException::class) fun testUnclosedSingleQuote() {
         LineParser.processQuotes("hello ' world")
     }
 
-    @Test(expected = ParserException::class) fun testUnclosedDoubleQuote() {
-        LineParser.processQuotes("hello \" world")
+    @Test(expected = LineParserException::class) fun testUnclosedDoubleQuote() {
+        LineParser.processQuotes("""hello " world""")
     }
 }
 
-class TestSubstitute {
+class SubstituteTest {
     val parser: LineParser = LineParser(Environment())
 
     fun checkSubstitute(expected: String, str: String, quotations: String) {
@@ -140,7 +141,7 @@ class TestSubstitute {
         )
     }
 
-    @Test(expected = ParserException::class) fun testNonExistentVariable() {
+    @Test(expected = LineParserException::class) fun testNonExistentVariable() {
         parser.substitute(toQuotedCharList(
                 "HI @THERE".replace('@', '$'),
                 "         "
@@ -148,28 +149,32 @@ class TestSubstitute {
     }
 }
 
-class TestTokenize {
-    fun checkTokenize(expected: List<String>, str: String, quotations: String) {
+class TokenizeTest {
+    fun checkTokenize(expected: List<Token>, str: String, quotations: String) {
         assertEquals(expected, LineParser.tokenize(toQuotedCharList(str, quotations)))
     }
 
+    fun checkTokenizeNoQuotes(expected: List<String>, str: String, quotations: String) {
+        checkTokenize(expected.map({ data -> Token(data, startQuoted = false) }), str, quotations)
+    }
+
     @Test fun testSimpleTokenize() {
-        checkTokenize(
+        checkTokenizeNoQuotes(
                 listOf("hi"),
                 """hi""",
                 """  """
         )
-        checkTokenize(
+        checkTokenizeNoQuotes(
                 listOf("hello", "world"),
                 """hello world""",
                 """           """
         )
-        checkTokenize(
+        checkTokenizeNoQuotes(
                 listOf("hello", "world"),
                 """hello  world""",
                 """            """
         )
-        checkTokenize(
+        checkTokenizeNoQuotes(
                 listOf("hello", "world"),
                 """ hello  world """,
                 """              """
@@ -182,14 +187,20 @@ class TestTokenize {
 
     @Test fun testEmptyTokens() {
         checkTokenize(
-                listOf("hi", "", "my super", " ", "great", "", "world"),
+                listOf(Token("hi", false),
+                        Token("", true),
+                        Token("my super", false),
+                        Token(" ", true),
+                        Token("great", false),
+                        Token("", true),
+                        Token("world", false)),
                 """   hi   '''' my super    great "" world """,
                 """        ''''  sss      s       ''       """
         )
     }
 
     @Test fun testSpecialChar() {
-        checkTokenize(
+        checkTokenizeNoQuotes(
                 listOf("|", "hello", "|", "world", "|", "this", "is", "|", "great", "|", "pipe", "|"),
                 """|  hello|world |this is| great | pipe |""",
                 """                                       """
@@ -198,67 +209,113 @@ class TestTokenize {
 
     @Test fun testEscapedSpecialChar() {
         checkTokenize(
-                listOf("some", "non|", "|pipe test"),
-                """some non| |pipe test""",
-                """        s s    s    """
+                listOf(
+                        Token("some", false),
+                        Token("non|", false),
+                        Token("|pipe test", true),
+                        Token("|", true),
+                        Token("|", false),
+                        Token("hi", false)
+                ),
+                """some non| |pipe test | | hi""",
+                """        s s    s     s     """
         )
     }
 }
 
-class TestLineParserParse {
+class LineParserParseTest {
     val parser: LineParser = LineParser(Environment())
 
+    fun unquotedTokens(data: List<String>) = data.map { x -> Token(x, false) }
+
     @Test fun testSimpleSplit() {
-        assertEquals(listOf("hello", "world"), parser.parse("hello world"))
-        assertEquals(listOf("hello", "world"), parser.parse(" hello world"))
-        assertEquals(listOf("hello", "world"), parser.parse("  hello  world"))
-        assertEquals(listOf("hello", "world"), parser.parse("  hello  world  "))
+        assertEquals(unquotedTokens(listOf("hello", "world")), parser.parse("hello world"))
+        assertEquals(unquotedTokens(listOf("hello", "world")), parser.parse(" hello world"))
+        assertEquals(unquotedTokens(listOf("hello", "world")), parser.parse("  hello  world"))
+        assertEquals(unquotedTokens(listOf("hello", "world")), parser.parse("  hello  world  "))
     }
 
     @Test fun testEscaping() {
-        assertEquals(listOf("this\"is\'some thing", "with", "\$VAR"), parser.parse("this\\\"is\\'some\\ thing with \\\$VAR"))
+        assertEquals(
+                listOf(
+                        Token("""this"is'some thing""", false),
+                        Token("with", false),
+                        Token("\$VAR", true)
+                ),
+                parser.parse("this\\\"is\\'some\\ thing with \\\$VAR")
+        )
     }
 
-    @Test(expected = ParserException::class) fun testEolAfterBackslash() {
+    @Test(expected = LineParserException::class) fun testEolAfterBackslash() {
         parser.parse("malformed\\")
     }
 
     @Test fun testPipeline() {
-        assertEquals(listOf("this", "|", "is", "|", "|", "some", "|", "|", "|", "pipeline"),
+        assertEquals(unquotedTokens(listOf("this", "|", "is", "|", "|", "some", "|", "|", "|", "pipeline")),
                 parser.parse("this | is || some | || pipeline"))
     }
 
     @Test fun testQuotes() {
-        assertEquals(listOf("somequoted 'tex|tIs \"hereand", "there"),
-                parser.parse("some\"quoted 'tex|t\"I's \"here'and there"))
+        assertEquals(unquotedTokens(listOf("somequoted 'tex|tIs \"hereand", "there")),
+                parser.parse("""some"quoted 'tex|t"I's "here'and there"""))
+    }
+
+    @Test fun testQuotedPipeline() {
+        assertEquals(
+                listOf(
+                        Token("hello", false),
+                        Token("|", false),
+                        Token("|", true),
+                        Token("|", true),
+                        Token("|", false),
+                        Token("world", false)
+                ),
+                parser.parse("""hello|\| \||world""")
+        )
     }
 
     @Test fun testEmptyQuotes() {
-        assertEquals(listOf("", "hello", "", "world", ""),
-                parser.parse("\"\" hello '' world \"\""))
+        assertEquals(
+                listOf(
+                        Token("", true),
+                        Token("hello", false),
+                        Token("", true),
+                        Token("world", false),
+                        Token("", true)
+                ),
+                parser.parse("\"\" hello '' world \"\"")
+        )
     }
 
     @Test fun testSubstitutions() {
         parser.environment["VAR"] = "Some value"
         parser.environment["OTHER_VAR1"] = "Other \$VAR"
-        assertEquals(listOf("Value", "of", "VAR", "is", "Some", "value"),
+        assertEquals(unquotedTokens(listOf("Value", "of", "VAR", "is", "Some", "value")),
                 parser.parse("Value of VAR is \$VAR"))
-        assertEquals(listOf("Value", "of", "VAR", "is", " Some value"),
-                parser.parse("Value of VAR is \" \$VAR\""))
-        assertEquals(listOf("Value", "of", "OTHER_VAR1", "is", "Other", "\$VAR"),
+        assertEquals(
+                listOf(
+                        Token("Value", false),
+                        Token("of", false),
+                        Token("VAR", false),
+                        Token("is", false),
+                        Token(" Some value", true)
+                ),
+                parser.parse("Value of VAR is \" \$VAR\"")
+        )
+        assertEquals(unquotedTokens(listOf("Value", "of", "OTHER_VAR1", "is", "Other", "\$VAR")),
                 parser.parse("Value of OTHER_VAR1 is \$OTHER_VAR1"))
     }
 
-    @Test(expected = ParserException::class) fun testSubstituteNotExistent() {
+    @Test(expected = LineParserException::class) fun testSubstituteNotExistent() {
         parser.parse("Value of VAR is \$VAR")
     }
 
     @Test fun testSubstitutionsInsideQuotes() {
         parser.environment["VAR"] = "Some value"
         parser.environment["OTHER_VAR1"] = "Other \$VAR"
-        assertEquals(listOf("Value of \$VAR is not here"),
-                parser.parse("'Value of \$VAR is not here'"))
-        assertEquals(listOf("Value of \$VAR is Some value, yes"),
-                parser.parse("\"Value of \\\$VAR is \$VAR, yes\""))
+        assertEquals(unquotedTokens(listOf("aValue of \$VAR is not here")),
+                parser.parse("a'Value of \$VAR is not here'"))
+        assertEquals(unquotedTokens(listOf("aValue of \$VAR is Some value, yes")),
+                parser.parse("a\"Value of \\\$VAR is \$VAR, yes\""))
     }
 }
