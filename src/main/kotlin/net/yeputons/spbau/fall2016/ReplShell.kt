@@ -17,6 +17,7 @@ class ReplShell {
         commandWithArgumentsParser.addCommand("echo", { command, args, env -> EchoCommand(args) })
         commandWithArgumentsParser.addCommand("cat", { command, args, env -> CatCommand(args, env) })
         commandWithArgumentsParser.addCommand("wc", { command, args, env -> WcCommand(args, env) })
+        commandWithArgumentsParser.addCommand("grep", { command, args, env -> GrepCommand(args, env) })
 
         var exitShell: Boolean = false
         commandWithArgumentsParser.addCommand("exit", { command, args, env -> object : BuiltinExecutable() {
