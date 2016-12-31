@@ -121,6 +121,19 @@ class CatCommandTest {
         assertEquals("content of a.txt\n", output)
     }
 
+    @Test fun testExistingFileAbsolutePath() {
+        tmpFolder.create()
+        tmpFolder.newFile("a.txt").writeText("content of a.txt\n")
+        val env = Environment()
+        env.currentDirectory = tmpFolder.root
+
+        val path = File(tmpFolder.root, "a.txt").absolutePath
+        val (exitCode, output) = ExecutableTest.run(CatCommand(listOf(path), env))
+
+        assertEquals(0, exitCode)
+        assertEquals("content of a.txt\n", output)
+    }
+
     @Test fun testConcat() {
         tmpFolder.create()
         tmpFolder.newFile("a.txt").writeText("content of a.txt\n")
@@ -166,6 +179,19 @@ class WcCommandTest {
 
         assertEquals(0, exitCode)
         assertEquals("1 3 17 a.txt\n", output)
+    }
+
+    @Test fun testExistingFileAbsolutePath() {
+        tmpFolder.create()
+        tmpFolder.newFile("a.txt").writeText("content of a.txt\n")
+        val env = Environment()
+        env.currentDirectory = tmpFolder.root
+
+        val path = File(tmpFolder.root, "a.txt").absolutePath
+        val (exitCode, output) = ExecutableTest.run(WcCommand(listOf(path), env))
+
+        assertEquals(0, exitCode)
+        assertEquals("1 3 17 ${path}\n", output)
     }
 
     @Test fun testConcat() {

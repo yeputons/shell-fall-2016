@@ -2,6 +2,7 @@ package net.yeputons.spbau.fall2016.executables
 
 import net.yeputons.spbau.fall2016.Environment
 import java.io.*
+import java.nio.file.Paths
 import java.util.concurrent.Callable
 import java.util.concurrent.FutureTask
 import java.util.regex.Pattern
@@ -118,7 +119,7 @@ class CatCommand(val args: List<String>, val env: Environment) : BuiltinExecutab
                         input
                     } else {
                         try {
-                            FileInputStream(File(env.currentDirectory, fileName))
+                            FileInputStream(env.getFile(fileName))
                         } catch (e: IOException) {
                             outputWrite(e.toString() + "\n")
                             result = 1
@@ -182,7 +183,7 @@ class WcCommand(val args: List<String>, val env: Environment) : BuiltinExecutabl
                         input
                     } else {
                         try {
-                            FileInputStream(File(env.currentDirectory, fileName))
+                            FileInputStream(env.getFile(fileName))
                         } catch (e: IOException) {
                             outputWrite(e.toString() + "\n")
                             result = 1
