@@ -73,6 +73,17 @@ class GrepProcessor(val config: GrepConfig) {
         val WORD_SPLIT_REGEX = Pattern.compile("\\b")
     }
 
+    /**
+     * If "-A" option is specified, all matched lines are grouped together with
+     * following lines. If two groups are intersecting, they are merged together.
+     * Afterwards consecutive groups are separated with "--" in the output.
+     * Groups are explicitly broken between files via fileEnded().
+     *
+     * remainingInGroup is number of lines which has to be printed until the end of current group.
+     * previousPrinted is whether or not the previous line was in some group (we need
+     * to know in order to properly start a new group or continue the previous).
+     */
+
     private var remainingInGroup = 0
     var groupsFound = false
         get() = field
